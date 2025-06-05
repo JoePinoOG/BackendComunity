@@ -24,11 +24,16 @@ class Anuncio(models.Model):
     titulo = models.CharField(max_length=255)
     contenido = models.TextField()
     creado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL,  # Cambiado de 'auth.User'
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL, 
         null=True
     )
     fecha_publicacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        permissions = [
+            ("publicar_anuncio", "Puede publicar anuncios"),
+        ]
 
     def __str__(self):
         return self.titulo

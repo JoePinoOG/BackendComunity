@@ -6,7 +6,7 @@ from .serializers import (
     AnuncioSerializer,
     ContactoAutoridadSerializer,
 )
-from .permissions import IsDirectivaOrReadOnly 
+from .permissions import IsDirectivaOrReadOnly, IsAuthenticatedOrReadOnly
 
 # View para Junta de Vecinos
 class JuntaVecinosViewSet(viewsets.ModelViewSet):
@@ -22,7 +22,10 @@ class SedeComunitariaViewSet(viewsets.ModelViewSet):
 class AnuncioViewSet(viewsets.ModelViewSet):
     queryset = Anuncio.objects.all().order_by('-fecha_publicacion')
     serializer_class = AnuncioSerializer
-    permission_classes = [IsDirectivaOrReadOnly]  # 👈 Aplica el permiso
+    permission_classes = [IsAuthenticatedOrReadOnly]  # 👈 Cambiado a IsAuthenticatedOrReadOnly
+    
+    def perform_create(self, serializer):
+        serializer.save(creado_por=self.request.user)
 
 # View para Contactos de Autoridades
 class ContactoAutoridadViewSet(viewsets.ModelViewSet):

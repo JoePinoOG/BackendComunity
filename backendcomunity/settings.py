@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'usuarios',
     'comunidad',
     'arriendos',
+    'documentos',
     #apps para el login
     'rest_framework',
     'rest_framework_simplejwt',
@@ -81,6 +82,9 @@ CORS_ALLOWED_ORIGINS = [
 
 ROOT_URLCONF = 'backendcomunity.urls'
 
+# Configuración para archivos de medios
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 TEMPLATES = [
     {
