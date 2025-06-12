@@ -27,6 +27,8 @@ urlpatterns = [
 urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # <-- LOGIN JWT
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # <-- REFRESH JWT
+     path('admin/', admin.site.urls),
+     
     path('api/auth/', include('usuarios.urls')), 
     path('api/comunidad/', include('comunidad.urls')),
     path('api/reuniones/', include('reuniones.urls')),
