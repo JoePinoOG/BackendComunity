@@ -19,11 +19,7 @@ from django.urls import path
 from django.urls import include, path #para importar las demas urls
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-]
 
-#incluir aqui las demas urls
 urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # <-- LOGIN JWT
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # <-- REFRESH JWT
