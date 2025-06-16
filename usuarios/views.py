@@ -12,7 +12,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            return [AllowAny()]  # Permite registro sin autenticación
+            return [AllowAny()]
         elif self.action == 'aprobar':
             return [IsAuthenticated(), EsSecretario()]
         return [IsAuthenticated(), EsDirectiva()]
