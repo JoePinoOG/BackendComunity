@@ -19,9 +19,11 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            print(serializer.errors)  # O usa logging
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         direccion = serializer.validated_data.get('direccion')
-        juntas_vecinos = asignar_junta_vecinos(direccion)  # Implementa esta función
+        #juntas_vecinos = asignar_junta_vecinos(direccion)  # Asegúrate de que esta función existe y funciona
         serializer.save(juntas_vecinos=juntas_vecinos, estado='PENDIENTE')
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
