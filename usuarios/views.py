@@ -6,6 +6,9 @@ from .models import Usuario
 from .serializers import UsuarioSerializer, AprobarUsuarioSerializer
 from .permissions import EsSecretario, EsDirectiva
 
+def asignar_junta_vecinos(direccion):
+    return None
+
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
@@ -23,7 +26,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             print(serializer.errors)  # O usa logging
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         direccion = serializer.validated_data.get('direccion')
-        #juntas_vecinos = asignar_junta_vecinos(direccion)  # Asegúrate de que esta función existe y funciona
+        juntas_vecinos = asignar_junta_vecinos(direccion)  # Asegúrate de que esta función existe y funciona
         serializer.save(juntas_vecinos=juntas_vecinos, estado='PENDIENTE')
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
