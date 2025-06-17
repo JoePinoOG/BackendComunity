@@ -4,7 +4,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Usuario
 from .serializers import UsuarioSerializer
-from .permissions import EsSecretario, EsDirectiva
 from rest_framework.views import APIView
 
 def asignar_junta_vecinos(direccion):
@@ -18,8 +17,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return [AllowAny()]
         elif self.action == 'aprobar':
-            return [IsAuthenticated(), EsSecretario()]
-        return [IsAuthenticated(), EsDirectiva()]
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
