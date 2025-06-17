@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Usuario
 from .serializers import UsuarioSerializer, AprobarUsuarioSerializer
 from .permissions import EsSecretario, EsDirectiva
+from rest_framework.views import APIView
 
 def asignar_junta_vecinos(direccion):
     return None
@@ -39,3 +40,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             usuario.save()
             return Response({'status': 'Estado actualizado'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UsuarioMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UsuarioSerializer(request.user)
+        return Response(serializer.data)
+
+ 
