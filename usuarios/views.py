@@ -28,7 +28,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         direccion = serializer.validated_data.get('direccion')
         juntas_vecinos = asignar_junta_vecinos(direccion)  # Asegúrate de que esta función existe y funciona
-        serializer.save(juntas_vecinos=juntas_vecinos, estado='PENDIENTE')
+        serializer.save(juntas_vecinos=juntas_vecinos)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
