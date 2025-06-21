@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import include, path #para importar las demas urls
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from usuarios.views import crear_superusuario
 
 
 urlpatterns = [
@@ -31,5 +32,6 @@ urlpatterns = [
     path('api/arriendos/', include('arriendos.urls')),
     path('api/finanzas/', include('finanzas.urls')),
     path('api/documentos/', include('documentos.urls')),
+    path('crear-superusuario/', crear_superusuario),
 ]
 

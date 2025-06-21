@@ -5,6 +5,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Usuario
 from .serializers import UsuarioSerializer
 from rest_framework.views import APIView
+from django.http import HttpResponse
+from django.contrib.auth import get_user_model
 
 def asignar_junta_vecinos(direccion):
     return None
@@ -47,4 +49,16 @@ class UsuarioMeView(APIView):
         serializer = UsuarioSerializer(request.user)
         return Response(serializer.data)
 
- 
+def crear_superusuario(request):
+    User = get_user_model()
+    if not User.objects.filter(username='nuevoadmin').exists():
+        User.objects.create_superuser(
+            username='nuevoadmin',
+            email='admin@email.com',
+            password='contraseña_segura'
+        )
+        return HttpResponse("Superusuario creado")
+    return HttpResponse("Ya existe un usuario con ese nombre")
+
+
+
