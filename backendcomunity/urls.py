@@ -32,6 +32,5 @@ urlpatterns = [
     path('api/arriendos/', include('arriendos.urls')),
     path('api/finanzas/', include('finanzas.urls')),
     path('api/documentos/', include('documentos.urls')),
-    path('crear-superusuario/', crear_superusuario),
 ]
 

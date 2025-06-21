@@ -49,21 +49,7 @@ class UsuarioMeView(APIView):
         serializer = UsuarioSerializer(request.user)
         return Response(serializer.data)
 
-def crear_superusuario(request):
-    User = get_user_model()
-    if not User.objects.filter(username='superuser').exists():
-        User.objects.create_superuser(
-            username='superuser',
-            email='ma.donosor@duocuc.cl',
-            password='superuser1234',
-            rut='11111111-1',
-            direccion='Dirección admin',
-            telefono='123456789',
-            estado='APROBADO',
-            rol='PRESIDENTE'
-        )
-        return HttpResponse("Superusuario creado")
-    return HttpResponse("Ya existe un usuario con ese nombre")
+
 
 
 
