@@ -176,11 +176,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuración Webpay Plus
 WEBPAY_CONFIG = {
-    'COMMERCE_CODE': 'TU_CODIGO_COMERCIO',
-    'API_KEY': 'TU_API_KEY',
-    'ENVIRONMENT': 'TEST',  # o 'LIVE' para producción
-    'SUCCESS_URL': 'https://tudominio.com/webpay/exito/',
-    'FAILURE_URL': 'https://tudominio.com/webpay/fracaso/',
-    'CALLBACK_URL': 'https://tudominio.com/webpay/confirmacion/',
-
+    'COMMERCE_CODE': '597055555532',
+    'API_KEY': '1234567890abcdef1234567890abcdef',
+    'ENVIRONMENT': 'TEST',
+    'CALLBACK_URL': 'https://backendcomunity.onrender.com/api/certificado/webpay-callback/',
 }
+

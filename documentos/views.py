@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django.conf import settings
 from .models import CertificadoResidencia, SolicitudCertificado, TransaccionWebpay
 from .serializers import (
@@ -106,6 +107,7 @@ class SolicitudCertificadoCreateAPIView(generics.CreateAPIView):
             )
 
 class WebpayCallbackAPIView(APIView):
+    permission_classes = [AllowAny]
     """
     Maneja el callback de Webpay después del pago
     """
