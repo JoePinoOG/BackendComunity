@@ -87,6 +87,13 @@ ROOT_URLCONF = 'backendcomunity.urls'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+CERTIFICADO_RESIDENCIA = {
+    'PRECIO': 5000,  # Valor por defecto en CLP
+    'PLANTILLA_PATH': 'plantillas/certificado_residencia.docx',
+    'DIAS_VALIDEZ': 30,
+    'CUENTA_JUNTA_VECINOS': '123456789',  # Cuenta donde se depositarán los fondos
+}
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -110,7 +117,10 @@ WSGI_APPLICATION = 'backendcomunity.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
+        default=os.environ.get(
+            'DATABASE_URL',
+            'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/nombre_basedatos'
+        )
     )
 }
 
@@ -163,3 +173,14 @@ if not DEBUG:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración Webpay Plus
+WEBPAY_CONFIG = {
+    'COMMERCE_CODE': 'TU_CODIGO_COMERCIO',
+    'API_KEY': 'TU_API_KEY',
+    'ENVIRONMENT': 'TEST',  # o 'LIVE' para producción
+    'SUCCESS_URL': 'https://tudominio.com/webpay/exito/',
+    'FAILURE_URL': 'https://tudominio.com/webpay/fracaso/',
+    'CALLBACK_URL': 'https://tudominio.com/webpay/confirmacion/',
+
+}

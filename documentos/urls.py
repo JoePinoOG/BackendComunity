@@ -1,11 +1,15 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import PlantillaDocumentoViewSet, SolicitudDocumentoViewSet
-
-router = DefaultRouter()
-router.register(r'plantillas', PlantillaDocumentoViewSet)
-router.register(r'solicitudes', SolicitudDocumentoViewSet, basename='solicitud')
+# urls.py
+from django.urls import path
+from .views import (
+    ConfigCertificadoAPIView,
+    SolicitudCertificadoCreateAPIView,
+    WebpayCallbackAPIView,
+    DescargarCertificadoAPIView
+)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('api/certificado/config/', ConfigCertificadoAPIView.as_view(), name='certificado-config'),
+    path('api/certificado/solicitar/', SolicitudCertificadoCreateAPIView.as_view(), name='solicitar-certificado'),
+    path('api/certificado/webpay-callback/', WebpayCallbackAPIView.as_view(), name='webpay-callback'),
+    path('api/certificado/<int:id>/descargar/', DescargarCertificadoAPIView.as_view(), name='descargar-certificado'),
 ]
