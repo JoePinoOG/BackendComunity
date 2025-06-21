@@ -85,6 +85,8 @@ class SolicitudCertificado(models.Model):
         null=True,
         blank=True
     )
+
+    documento_pdf = models.FileField(upload_to='certificados/pdf/', null=True, blank=True)
     
     # Información de pago
     monto = models.DecimalField(

@@ -12,6 +12,7 @@ from .serializers import (
     SolicitudCertificadoSerializer
 )
 from docxtpl import DocxTemplate
+from docx2pdf import convert
 from datetime import datetime
 import os
 import tempfile
@@ -170,9 +171,12 @@ class WebpayCallbackAPIView(APIView):
         
         try:
             doc = DocxTemplate(config.plantilla.path)
-            
+            usuario = solicitud.usuario
+
             contexto = {
                 **solicitud.datos,
+                'nombre_usuario': usuario.get_full_name(),
+                'email_usuario': usuario.email,
                 'fecha_emision': datetime.now().strftime("%d de %B de %Y"),
                 'firma_secretaria': "MAYRA CACERES CUEVAS",
                 'firma_presidenta': "SONIA RUZ ALFARO"
@@ -181,13 +185,19 @@ class WebpayCallbackAPIView(APIView):
             doc.render(contexto)
             
             temp_dir = tempfile.gettempdir()
-            filename = f"certificado_residencia_{solicitud.id}.docx"
-            temp_path = os.path.join(temp_dir, filename)
-            doc.save(temp_path)
-            
-            with open(temp_path, 'rb') as f:
-                solicitud.documento.save(filename, f)
-            
+            filename_docx = f"certificado_residencia_{solicitud.id}.docx"
+            temp_path_docx = os.path.join(temp_dir, filename_docx)
+            doc.save(temp_path_docx)
+
+            # Convertir a PDF
+            filename_pdf = f"certificado_residencia_{solicitud.id}.pdf"
+            temp_path_pdf = os.path.join(temp_dir, filename_pdf)
+            convert(temp_path_docx, temp_path_pdf)
+
+            # Guardar el PDF en el modelo (debes agregar un campo FileField para PDF en tu modelo)
+            with open(temp_path_pdf, 'rb') as f:
+                solicitud.documento_pdf.save(filename_pdf, f)
+
         except Exception as e:
             solicitud.estado_documento = 'ERROR'
             solicitud.save()
@@ -219,7 +229,7 @@ class DescargarCertificadoAPIView(generics.RetrieveAPIView):
         # Devolver el archivo
         document = instance.documento.open('rb')
         response = FileResponse(document)
-        response['Content-Disposition'] = f'attachment; filename="certificado_residencia_{instance.id}.docx"'
+        response['Content-Disposition'] = f'attachment; filename="certificado_residencia_{instance.id}.pdf"'
         return response
     
     def get_queryset(self):

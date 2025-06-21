@@ -88,7 +88,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CERTIFICADO_RESIDENCIA = {
-    'PRECIO': 5000,  # Valor por defecto en CLP
+    'PRECIO': 1500,  # Valor por defecto en CLP
     'PLANTILLA_PATH': 'plantillas/certificado_residencia.docx',
     'DIAS_VALIDEZ': 30,
     'CUENTA_JUNTA_VECINOS': '123456789',  # Cuenta donde se depositarán los fondos
