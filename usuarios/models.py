@@ -31,16 +31,20 @@ class Usuario(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} ({self.rol})"
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
-            print(serializer.errors)  # O usa logging
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        direccion = serializer.validated_data.get('direccion')
-        try:
-            juntas_vecinos = asignar_junta_vecinos(direccion)  # Asegúrate de que esta función existe y funciona
-        except Exception as e:
-            print(str(e))
-            return Response({'error': 'Error al asignar junta de vecinos'}, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(juntas_vecinos=juntas_vecinos, estado='PENDIENTE')
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # Métodos útiles para roles
+    def es_directiva(self):
+        return self.rol in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']
+
+    def es_vecino(self):
+        return self.rol == 'VECINO'
+
+    def es_secretario(self):
+        return self.rol == 'SECRETARIO'
+
+    def es_tesorero(self):
+        return self.rol == 'TESORERO'
+
+    def es_presidente(self):
+        return self.rol == 'PRESIDENTE'
+
+    # (Opcional) Puedes dejar la lógica de creación en el ViewSet, no en el modelo.
