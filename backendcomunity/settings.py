@@ -91,7 +91,7 @@ CERTIFICADO_RESIDENCIA = {
     'PRECIO': 1500,  # Valor por defecto en CLP
     'PLANTILLA_PATH': 'plantillas/certificado_residencia.docx',
     'DIAS_VALIDEZ': 30,
-    'CUENTA_JUNTA_VECINOS': '123456789',  # Cuenta donde se depositarán los fondos
+    'CUENTA_JUNTA_VECINOS': '23362993709',  # Cuenta donde se depositarán los fondos
 }
 
 TEMPLATES = [
@@ -179,6 +179,6 @@ WEBPAY_CONFIG = {
     'COMMERCE_CODE': '597055555532',
     'API_KEY': '1234567890abcdef1234567890abcdef',
     'ENVIRONMENT': 'TEST',
-    'CALLBACK_URL': 'https://backendcomunity.onrender.com/api/certificado/webpay-callback/',
+    'CALLBACK_URL': 'https://backendcomunity.onrender.com/api/arriendos/webpay-callback/',
 }
 

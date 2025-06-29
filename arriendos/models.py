@@ -16,7 +16,9 @@ class SolicitudArriendo(models.Model):
         on_delete=models.CASCADE,
         related_name='solicitudes_arriendo'
     )
-    fecha_evento = models.DateTimeField()
+    fecha_evento = models.DateField()  # Solo la fecha del evento
+    hora_inicio = models.TimeField()   # Hora de inicio del arriendo
+    hora_fin = models.TimeField()      # Hora de término del arriendo
     motivo = models.TextField()
     cantidad_asistentes = models.PositiveIntegerField(
         validators=[MinValueValidator(1)]
@@ -39,10 +41,12 @@ class SolicitudArriendo(models.Model):
     )
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True)
+    token_webpay = models.CharField(max_length=100, blank=True, null=True)  # Para asociar el pago Webpay
 
     class Meta:
         ordering = ['-fecha_solicitud']
         verbose_name_plural = "Solicitudes de arriendo"
+        unique_together = ('fecha_evento', 'hora_inicio', 'hora_fin')  # No se puede repetir el mismo bloque
 
     def __str__(self):
         return f"Solicitud #{self.id} - {self.solicitante.username}"
