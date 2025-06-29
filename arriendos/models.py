@@ -17,8 +17,8 @@ class SolicitudArriendo(models.Model):
         related_name='solicitudes_arriendo'
     )
     fecha_evento = models.DateField()  # Solo la fecha del evento
-    hora_inicio = models.TimeField()   # Hora de inicio del arriendo
-    hora_fin = models.TimeField()      # Hora de término del arriendo
+    hora_inicio = models.TimeField(null=True, blank=True)   # Hora de inicio del arriendo
+    hora_fin = models.TimeField(null=True, blank=True)      # Hora de término del arriendo
     motivo = models.TextField()
     cantidad_asistentes = models.PositiveIntegerField(
         validators=[MinValueValidator(1)]

@@ -119,7 +119,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get(
             'DATABASE_URL',
-            'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/nombre_basedatos'
+            'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/comunitydatabaseinstance'
         )
     )
 }
