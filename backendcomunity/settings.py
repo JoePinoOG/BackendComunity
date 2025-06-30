@@ -57,7 +57,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    'django_filters',  # Para filtros avanzados
     'finanzas',
     'reuniones',
     'usuarios',
@@ -65,7 +64,7 @@ INSTALLED_APPS = [
     'arriendos',
     'documentos',
     'contactos',
-    'publicaciones',  # Nueva app agregada
+    'publicaciones',
     #apps para el login
     'rest_framework',
     'rest_framework_simplejwt',
