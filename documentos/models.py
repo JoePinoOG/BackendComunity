@@ -36,8 +36,8 @@ class CertificadoResidencia(models.Model):
         default='PUBLICADO'
     )
     
-    campos_requeridos = models.JSONField(
-        default=list,
+    campos_requeridos = models.TextField(
+        default='[]',
         help_text="Campos del formulario en formato JSON"
     )
     
@@ -75,8 +75,8 @@ class SolicitudCertificado(models.Model):
     )
     
     # Datos del certificado
-    datos = models.JSONField(
-        default=dict,
+    datos = models.TextField(
+        default='{}',
         help_text="Datos proporcionados para el certificado"
     )
     
@@ -106,7 +106,7 @@ class SolicitudCertificado(models.Model):
         help_text="Código de transacción de Webpay"
     )
     
-    respuesta_webpay = models.JSONField(
+    respuesta_webpay = models.TextField(
         null=True,
         blank=True,
         help_text="Respuesta completa de Webpay"
@@ -153,7 +153,7 @@ class TransaccionWebpay(models.Model):
     
     token = models.CharField(max_length=100)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES)
-    respuesta = models.JSONField()
+    respuesta = models.TextField()
     
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
