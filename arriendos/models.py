@@ -5,8 +5,6 @@ from django.core.validators import MinValueValidator
 class SolicitudArriendo(models.Model):
     ESTADOS = [
         ('PENDIENTE', 'Pendiente'),
-        ('APROBADO', 'Aprobado'),
-        ('RECHAZADO', 'Rechazado'),
         ('PAGADO', 'Pagado'),
         ('CANCELADO', 'Cancelado')
     ]
@@ -34,11 +32,7 @@ class SolicitudArriendo(models.Model):
         null=True,
         blank=True
     )
-    comprobante_pago = models.FileField(
-        upload_to='comprobantes/',
-        null=True,
-        blank=True
-    )
+    
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True)
     token_webpay = models.CharField(max_length=100, blank=True, null=True)  # Para asociar el pago Webpay
