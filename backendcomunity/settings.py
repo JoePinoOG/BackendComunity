@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'django_filters',  # Para filtros avanzados
     'finanzas',
     'reuniones',
     'usuarios',
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
     'arriendos',
     'documentos',
     'contactos',
+    'publicaciones',  # Nueva app agregada
     #apps para el login
     'rest_framework',
     'rest_framework_simplejwt',
@@ -151,15 +153,23 @@ WSGI_APPLICATION = 'backendcomunity.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get(
-            'DATABASE_URL',
-            'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/comunitydatabaseinstance'
-        ),
-        conn_max_age=600,  # Reutilizar conexiones de DB por 600 segundos
-        conn_health_checks=True,  # Verificar salud de conexiones
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+# Configuración original para PostgreSQL (comentada para desarrollo)
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.environ.get(
+#             'DATABASE_URL',
+#             'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/comunitydatabaseinstance'
+#         ),
+#         conn_max_age=600,
+#         conn_health_checks=True,
+#     )
+# }
 
 # Configuraciones adicionales para PostgreSQL en producción
 if not DEBUG:

@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/finanzas/', include('finanzas.urls')),
     path('api/documentos/', include('documentos.urls')),
     path('api/contactos/', include('contactos.urls')),
+    path('api/publicaciones/', include('publicaciones.urls')),  # Nueva URL agregada
 ]
 
 # Servir archivos media en desarrollo
