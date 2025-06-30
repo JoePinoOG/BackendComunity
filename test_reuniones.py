@@ -39,8 +39,7 @@ def test_endpoints():
                 "motivo": "ORDINARIA",
                 "fecha": "2025-07-15T10:00:00Z",
                 "lugar": "Sala de reuniones",
-                "descripcion": "Reunión de prueba",
-                "participantes": []
+                "descripcion": "Reunión de prueba"
             }
             
             response = requests.post(f"{API_URL}/reuniones/reuniones/", 
