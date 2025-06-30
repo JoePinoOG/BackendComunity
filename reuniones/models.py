@@ -20,11 +20,7 @@ class Reunion(models.Model):
         null=True, 
         blank=True
     )
-    participantes = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='reuniones_participantes'
-    )
-    creada_en = models.DateTimeField(auto_now_add=True,null=True, blank=True)
+    creada_en = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
         verbose_name_plural = "Reuniones"

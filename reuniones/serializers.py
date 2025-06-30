@@ -7,7 +7,7 @@ class ReunionSerializer(serializers.ModelSerializer):
         model = Reunion
         fields = [
             'id', 'motivo', 'fecha', 'lugar', 'descripcion',
-            'convocante', 'participantes', 'creada_en'
+            'convocante', 'creada_en'
         ]
         read_only_fields = ('convocante', 'creada_en')
 
