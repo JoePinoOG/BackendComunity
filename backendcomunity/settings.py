@@ -24,12 +24,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', default='your secret key')  # Usar variable de entorno si está disponible
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG =  'RENDER' not in os.environ  # Verifica si está en Render para desactivar el debug
-ALLOWED_HOSTS = []
+DEBUG = 'RENDER' not in os.environ  # Verifica si está en Render para desactivar el debug
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# Configuración para Render
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Configuraciones de seguridad para producción
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_REDIRECT_EXEMPT = []
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
@@ -50,6 +63,7 @@ INSTALLED_APPS = [
     'comunidad',
     'arriendos',
     'documentos',
+    'contactos',
     #apps para el login
     'rest_framework',
     'rest_framework_simplejwt',
@@ -76,16 +90,37 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Configuración CORS para desarrollo con Ionic y producción
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8100",  # URL de Ionic en desarrollo
-    "https://tudominio.com"   # URL en producción
+    "http://localhost:8100",  # Para desarrollo con Ionic
+    "http://localhost:8080",  # Alternativa para desarrollo
+    "capacitor://localhost",
+    "ionic://localhost",
 ]
+
+# Agregar dominios de producción si están disponibles
+if RENDER_EXTERNAL_HOSTNAME:
+    CORS_ALLOWED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+# Configuración adicional de CORS para Ionic/Capacitor
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # Solo en desarrollo
 
 ROOT_URLCONF = 'backendcomunity.urls'
 
-# Configuración para archivos de medios
+# Configuración para archivos de medios optimizada para Render
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Para manejar archivos grandes (si guardas imágenes base64)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Configuración para Render - archivos estáticos y media
+if not DEBUG:
+    # Configurar CloudFlare u otro CDN para archivos media en producción
+    # MEDIA_URL podría apuntar a un bucket de S3 o similar
+    pass
 
 CERTIFICADO_RESIDENCIA = {
     'PRECIO': 1500,  # Valor por defecto en CLP
@@ -120,9 +155,17 @@ DATABASES = {
         default=os.environ.get(
             'DATABASE_URL',
             'postgres://comunitydatabaseinstance_user:T0QOstsBCSz5zEgboCR6I5OzJv8fx2IW@localhost:5432/comunitydatabaseinstance'
-        )
+        ),
+        conn_max_age=600,  # Reutilizar conexiones de DB por 600 segundos
+        conn_health_checks=True,  # Verificar salud de conexiones
     )
 }
+
+# Configuraciones adicionales para PostgreSQL en producción
+if not DEBUG:
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
+    }
 
 #tiempo para expirar sesion
 SIMPLE_JWT = {
@@ -152,13 +195,43 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-cl'  # Configurado para Chile
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Santiago'  # Zona horaria de Chile
 
 USE_I18N = True
 
 USE_TZ = True
+
+# Configuración de logging para producción
+if not DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose'
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+        },
+    }
 
 
 # Static files (CSS, JavaScript, Images)
