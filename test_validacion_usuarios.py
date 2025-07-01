@@ -47,8 +47,8 @@ class ValidacionUsuariosTestCase(TestCase):
             rut='33333333-3'
         )
 
-    def test_registro_vecino_auto_aprobado(self):
-        """Test que los vecinos se aprueban automáticamente"""
+    def test_registro_vecino_requiere_aprobacion(self):
+        """Test que los vecinos ahora también requieren aprobación"""
         data = {
             'username': 'nuevo_vecino',
             'email': 'nuevo_vecino@test.com',
@@ -64,11 +64,11 @@ class ValidacionUsuariosTestCase(TestCase):
         
         response = self.client.post('/api/auth/usuarios/registro/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data['require_approval'])
+        self.assertTrue(response.data['require_approval'])  # Ahora requiere aprobación
         
-        # Verificar que el usuario fue creado y aprobado
+        # Verificar que el usuario fue creado pero está pendiente
         usuario = User.objects.get(username='nuevo_vecino')
-        self.assertEqual(usuario.estado, 'APROBADO')
+        self.assertEqual(usuario.estado, 'PENDIENTE')  # Cambió de APROBADO a PENDIENTE
 
     def test_registro_directiva_pendiente(self):
         """Test que los roles de directiva quedan pendientes"""
@@ -94,12 +94,12 @@ class ValidacionUsuariosTestCase(TestCase):
         self.assertEqual(usuario.estado, 'PENDIENTE')
 
     def test_presidente_puede_ver_usuarios_pendientes(self):
-        """Test que el presidente puede ver usuarios pendientes"""
+        """Test que el presidente puede ver usuarios pendientes incluyendo vecinos"""
         self.client.force_authenticate(user=self.presidente)
         
         response = self.client.get('/api/auth/usuarios/usuarios_pendientes/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['total'], 1)
+        self.assertEqual(response.data['total'], 1)  # Solo el secretario_test está pendiente
         self.assertEqual(response.data['usuarios_pendientes'][0]['username'], 'secretario_test')
 
     def test_presidente_puede_aprobar_usuario(self):
@@ -187,4 +187,31 @@ class ValidacionUsuariosTestCase(TestCase):
         self.assertIn('aprobados', stats)
         self.assertIn('por_rol', stats)
         self.assertEqual(stats['pendientes'], 1)  # solo secretario_test
-        self.assertEqual(stats['aprobados'], 2)   # presidente y vecino
+        self.assertEqual(stats['aprobados'], 2)   # presidente y vecino (ya aprobados en setUp)
+    
+    def test_vecinos_tambien_aparecen_en_pendientes(self):
+        """Test que los vecinos también aparecen en la lista de usuarios pendientes"""
+        # Crear un vecino pendiente
+        vecino_pendiente = User.objects.create_user(
+            username='vecino_pendiente',
+            email='vecino_pendiente@test.com',
+            password='testpass123',
+            first_name='Vecino',
+            last_name='Pendiente',
+            rol='VECINO',
+            estado='PENDIENTE',
+            rut='77777777-7'
+        )
+        
+        self.client.force_authenticate(user=self.presidente)
+        
+        response = self.client.get('/api/auth/usuarios/usuarios_pendientes/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Ahora deberían haber 2 usuarios pendientes: secretario_test y vecino_pendiente
+        self.assertEqual(response.data['total'], 2)
+        
+        # Verificar que ambos roles están presentes
+        usernames = [u['username'] for u in response.data['usuarios_pendientes']]
+        self.assertIn('secretario_test', usernames)
+        self.assertIn('vecino_pendiente', usernames)

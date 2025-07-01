@@ -20,12 +20,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # Si el rol es de directiva, el estado debe ser PENDIENTE
-        if validated_data.get('rol') in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
-            validated_data['estado'] = 'PENDIENTE'
-        else:
-            # Los vecinos se aprueban automáticamente
-            validated_data['estado'] = 'APROBADO'
+        # Todos los usuarios requieren validación del presidente
+        validated_data['estado'] = 'PENDIENTE'
             
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
@@ -104,12 +100,8 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
         # Remover password_confirm antes de crear
         validated_data.pop('password_confirm', None)
         
-        # Si el rol es de directiva, el estado debe ser PENDIENTE
-        if validated_data.get('rol') in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
-            validated_data['estado'] = 'PENDIENTE'
-        else:
-            # Los vecinos se aprueban automáticamente
-            validated_data['estado'] = 'APROBADO'
+        # Todos los usuarios requieren validación del presidente
+        validated_data['estado'] = 'PENDIENTE'
             
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)

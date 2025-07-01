@@ -52,11 +52,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         juntas_vecinos = asignar_junta_vecinos(direccion)
         usuario = serializer.save(juntas_vecinos=juntas_vecinos)
         
-        # Mensaje diferente según el rol
-        if usuario.rol in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
-            mensaje = "Usuario registrado. Pendiente de aprobación por el presidente."
-        else:
-            mensaje = "Usuario registrado y aprobado automáticamente."
+        # Todos los usuarios quedan pendientes de aprobación
+        mensaje = "Usuario registrado. Pendiente de aprobación por el presidente."
         
         return Response({
             'usuario': UsuarioSerializer(usuario).data,
@@ -70,12 +67,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             usuario = serializer.save()
             
-            if usuario.rol in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
-                mensaje = "Registro exitoso. Tu solicitud está pendiente de aprobación por el presidente."
-                require_approval = True
-            else:
-                mensaje = "Registro exitoso. Tu cuenta ha sido aprobada automáticamente."
-                require_approval = False
+            # Todos los usuarios requieren aprobación
+            mensaje = "Registro exitoso. Tu solicitud está pendiente de aprobación por el presidente."
+            require_approval = True
             
             return Response({
                 'mensaje': mensaje,
@@ -89,8 +83,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def usuarios_pendientes(self, request):
         """Obtener usuarios pendientes de validación"""
         usuarios_pendientes = Usuario.objects.filter(
-            estado='PENDIENTE',
-            rol__in=['SECRETARIO', 'TESORERO', 'PRESIDENTE']
+            estado='PENDIENTE'
         ).order_by('date_joined')
         
         serializer = UsuarioValidacionSerializer(usuarios_pendientes, many=True)
