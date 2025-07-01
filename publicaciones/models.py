@@ -23,12 +23,11 @@ class Publicacion(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPOS, default='ANUNCIO')
     estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVA')
     
-    # Imagen opcional
-    imagen = models.ImageField(
-        upload_to='publicaciones/%Y/%m/', 
+    # Imagen opcional - almacenada como base64 o URL
+    imagen = models.TextField(
         null=True, 
         blank=True,
-        help_text="Imagen para la publicación (opcional)"
+        help_text="Imagen para la publicación en formato base64 o URL (opcional)"
     )
     
     # Metadatos

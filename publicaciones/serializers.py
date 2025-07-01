@@ -9,22 +9,14 @@ class AutorBasicoSerializer(serializers.ModelSerializer):
 
 class PublicacionListSerializer(serializers.ModelSerializer):
     autor = AutorBasicoSerializer(read_only=True)
-    imagen_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Publicacion
         fields = [
-            'id', 'titulo', 'contenido', 'tipo', 'estado', 'imagen_url',
+            'id', 'titulo', 'contenido', 'tipo', 'estado', 'imagen',
             'autor', 'fecha_creacion', 'fecha_modificacion', 'fecha_evento',
             'lugar_evento', 'es_destacada', 'fecha_expiracion', 'vistas'
         ]
-    
-    def get_imagen_url(self, obj):
-        if obj.imagen:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.imagen.url)
-        return None
 
 class PublicacionDetailSerializer(PublicacionListSerializer):
     class Meta(PublicacionListSerializer.Meta):
@@ -34,5 +26,11 @@ class PublicacionCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Publicacion
         fields = [
-            'titulo', 'contenido', 'tipo', 'imagen'
+            'titulo', 'contenido', 'tipo', 'imagen', 'fecha_evento', 'lugar_evento'
         ]
+    
+    def validate_imagen(self, value):
+        """Validar que la imagen sea una URL válida o base64"""
+        if value and not (value.startswith('http') or value.startswith('data:image')):
+            raise serializers.ValidationError("La imagen debe ser una URL válida o una imagen en base64")
+        return value
