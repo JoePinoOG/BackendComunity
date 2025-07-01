@@ -13,10 +13,13 @@ Los usuarios pueden tener los siguientes estados:
 
 ## Flujo de Registro
 
-### Registro de Todos los Usuarios
-- **TODOS los usuarios** (incluyendo vecinos) requieren validación del presidente
-- Ningún usuario es aprobado automáticamente
-- Todos quedan en estado **PENDIENTE** hasta ser validados
+### 1. Registro de Vecinos
+- Los usuarios que se registran con rol **VECINO** son aprobados automáticamente
+- No requieren validación del presidente
+
+### 2. Registro de Directiva
+- Los usuarios que se registran con roles de **SECRETARIO**, **TESORERO** o **PRESIDENTE** quedan en estado **PENDIENTE**
+- Requieren aprobación del presidente antes de poder usar el sistema
 
 ## Endpoints del API
 
@@ -41,13 +44,23 @@ POST /api/auth/usuarios/registro/
 }
 ```
 
-**Respuesta para cualquier rol:**
+**Respuesta para rol de directiva:**
 ```json
 {
     "mensaje": "Registro exitoso. Tu solicitud está pendiente de aprobación por el presidente.",
     "require_approval": true,
     "usuario_id": 123,
     "estado": "PENDIENTE"
+}
+```
+
+**Respuesta para vecino:**
+```json
+{
+    "mensaje": "Registro exitoso. Tu cuenta ha sido aprobada automáticamente.",
+    "require_approval": false,
+    "usuario_id": 124,
+    "estado": "APROBADO"
 }
 ```
 
@@ -121,14 +134,15 @@ GET /api/auth/usuarios/estadisticas_validacion/
     "pendientes": 3,
     "aprobados": 25,
     "rechazados": 2,
-    "total": 30,        "por_rol": {
-            "VECINO": {
-                "nombre": "Vecino",
-                "total": 20,
-                "pendientes": 5,  // Ahora los vecinos también pueden estar pendientes
-                "aprobados": 15,
-                "rechazados": 0
-            },
+    "total": 30,
+    "por_rol": {
+        "VECINO": {
+            "nombre": "Vecino",
+            "total": 20,
+            "pendientes": 0,
+            "aprobados": 20,
+            "rechazados": 0
+        },
         "SECRETARIO": {
             "nombre": "Secretario",
             "total": 5,
@@ -203,8 +217,11 @@ const registrarUsuario = async (userData) => {
         const data = await response.json();
         
         if (data.require_approval) {
-            // Mostrar mensaje de que debe esperar aprobación (todos los usuarios)
+            // Mostrar mensaje de que debe esperar aprobación
             mostrarMensaje('Tu solicitud está pendiente de aprobación por el presidente.');
+        } else {
+            // Redirigir al login o dashboard
+            mostrarMensaje('Registro exitoso. Puedes iniciar sesión.');
         }
     } catch (error) {
         console.error('Error en registro:', error);

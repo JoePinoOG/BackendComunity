@@ -4,8 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.http import HttpResponse
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.db.models import Q
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Usuario, HistorialValidacion
 from .serializers import (
@@ -52,8 +54,11 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         juntas_vecinos = asignar_junta_vecinos(direccion)
         usuario = serializer.save(juntas_vecinos=juntas_vecinos)
         
-        # Todos los usuarios quedan pendientes de aprobación
-        mensaje = "Usuario registrado. Pendiente de aprobación por el presidente."
+        # Mensaje diferente según el rol
+        if usuario.rol in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
+            mensaje = "Usuario registrado. Pendiente de aprobación por el presidente."
+        else:
+            mensaje = "Usuario registrado y aprobado automáticamente."
         
         return Response({
             'usuario': UsuarioSerializer(usuario).data,
@@ -67,9 +72,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             usuario = serializer.save()
             
-            # Todos los usuarios requieren aprobación
-            mensaje = "Registro exitoso. Tu solicitud está pendiente de aprobación por el presidente."
-            require_approval = True
+            if usuario.rol in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
+                mensaje = "Registro exitoso. Tu solicitud está pendiente de aprobación por el presidente."
+                require_approval = True
+            else:
+                mensaje = "Registro exitoso. Tu cuenta ha sido aprobada automáticamente."
+                require_approval = False
             
             return Response({
                 'mensaje': mensaje,
@@ -83,7 +91,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def usuarios_pendientes(self, request):
         """Obtener usuarios pendientes de validación"""
         usuarios_pendientes = Usuario.objects.filter(
-            estado='PENDIENTE'
+            estado='PENDIENTE',
+            rol__in=['SECRETARIO', 'TESORERO', 'PRESIDENTE']
         ).order_by('date_joined')
         
         serializer = UsuarioValidacionSerializer(usuarios_pendientes, many=True)
@@ -208,6 +217,37 @@ class UsuarioMeView(APIView):
     def get(self, request):
         serializer = UsuarioSerializer(request.user)
         return Response(serializer.data)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Serializer personalizado que valida el estado del usuario antes del login"""
+    
+    def validate(self, attrs):
+        # Primero validamos las credenciales usando el método padre
+        data = super().validate(attrs)
+        
+        # Obtenemos el usuario autenticado
+        user = self.user
+        
+        # Verificamos que el usuario esté aprobado
+        if user.estado != 'APROBADO':
+            if user.estado == 'PENDIENTE':
+                error_msg = "Tu cuenta está pendiente de aprobación por el presidente. No puedes acceder hasta que sea aprobada."
+            elif user.estado == 'RECHAZADO':
+                error_msg = "Tu cuenta ha sido rechazada. Contacta al administrador para más información."
+            else:
+                error_msg = "Tu cuenta no está habilitada para acceder al sistema."
+            
+            from rest_framework import serializers
+            raise serializers.ValidationError(error_msg)
+        
+        # Si llegamos aquí, el usuario está aprobado
+        return data
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """Vista personalizada de login que valida el estado del usuario"""
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 

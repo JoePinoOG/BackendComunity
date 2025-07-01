@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import Usuario
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,8 +22,12 @@ class UsuarioSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        # Todos los usuarios requieren validación del presidente
-        validated_data['estado'] = 'PENDIENTE'
+        # Si el rol es de directiva, el estado debe ser PENDIENTE
+        if validated_data.get('rol') in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
+            validated_data['estado'] = 'PENDIENTE'
+        else:
+            # Los vecinos se aprueban automáticamente
+            validated_data['estado'] = 'APROBADO'
             
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
@@ -100,8 +106,57 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
         # Remover password_confirm antes de crear
         validated_data.pop('password_confirm', None)
         
-        # Todos los usuarios requieren validación del presidente
-        validated_data['estado'] = 'PENDIENTE'
+        # Si el rol es de directiva, el estado debe ser PENDIENTE
+        if validated_data.get('rol') in ['SECRETARIO', 'TESORERO', 'PRESIDENTE']:
+            validated_data['estado'] = 'PENDIENTE'
+        else:
+            # Los vecinos se aprueban automáticamente
+            validated_data['estado'] = 'APROBADO'
             
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer personalizado para obtener token JWT que verifica el estado del usuario
+    """
+    
+    def validate(self, attrs):
+        # Obtener credenciales
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        # Intentar autenticar al usuario
+        user = authenticate(username=username, password=password)
+        
+        if user is None:
+            raise serializers.ValidationError('Credenciales inválidas')
+        
+        # Verificar que el usuario esté aprobado
+        if user.estado != 'APROBADO':
+            if user.estado == 'PENDIENTE':
+                raise serializers.ValidationError(
+                    'Tu cuenta está pendiente de aprobación por el administrador. '
+                    'Por favor, espera a que tu registro sea validado.'
+                )
+            elif user.estado == 'RECHAZADO':
+                raise serializers.ValidationError(
+                    'Tu cuenta ha sido rechazada. '
+                    'Contacta al administrador para más información.'
+                )
+            else:
+                raise serializers.ValidationError('Tu cuenta no está activa.')
+        
+        # Si está aprobado, continuar con el proceso normal
+        return super().validate(attrs)
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        
+        # Agregar información adicional al token
+        token['rol'] = user.rol
+        token['estado'] = user.estado
+        token['nombre_completo'] = user.get_full_name()
+        
+        return token
