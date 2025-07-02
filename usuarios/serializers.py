@@ -2,8 +2,6 @@ from rest_framework import serializers
 from .models import Usuario
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import authenticate
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -115,48 +113,3 @@ class UsuarioRegistroSerializer(serializers.ModelSerializer):
             
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Serializer personalizado para obtener token JWT que verifica el estado del usuario
-    """
-    
-    def validate(self, attrs):
-        # Obtener credenciales
-        username = attrs.get('username')
-        password = attrs.get('password')
-        
-        # Intentar autenticar al usuario
-        user = authenticate(username=username, password=password)
-        
-        if user is None:
-            raise serializers.ValidationError('Credenciales inválidas')
-        
-        # Verificar que el usuario esté aprobado
-        if user.estado != 'APROBADO':
-            if user.estado == 'PENDIENTE':
-                raise serializers.ValidationError(
-                    'Tu cuenta está pendiente de aprobación por el administrador. '
-                    'Por favor, espera a que tu registro sea validado.'
-                )
-            elif user.estado == 'RECHAZADO':
-                raise serializers.ValidationError(
-                    'Tu cuenta ha sido rechazada. '
-                    'Contacta al administrador para más información.'
-                )
-            else:
-                raise serializers.ValidationError('Tu cuenta no está activa.')
-        
-        # Si está aprobado, continuar con el proceso normal
-        return super().validate(attrs)
-    
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        
-        # Agregar información adicional al token
-        token['rol'] = user.rol
-        token['estado'] = user.estado
-        token['nombre_completo'] = user.get_full_name()
-        
-        return token

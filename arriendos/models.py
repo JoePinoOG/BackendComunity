@@ -32,6 +32,12 @@ class SolicitudArriendo(models.Model):
         null=True,
         blank=True
     )
+    comprobante_pago = models.ImageField(
+        upload_to='comprobantes_arriendo/',
+        null=True,
+        blank=True,
+        help_text="Imagen del comprobante de pago del arriendo"
+    )
     
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True)

@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from .models import SolicitudArriendo
 from .serializers import (
-    SolicitudArriendoSerializer
+    SolicitudArriendoSerializer,
+    ComprobantePagoSerializer
 )
 from django.conf import settings
 from transbank.webpay.webpay_plus.transaction import Transaction
@@ -42,6 +43,32 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
         solicitud.save()
 
         return Response({'url': url, 'token': token})
+
+    @action(detail=True, methods=['post'], url_path='subir-comprobante')
+    def subir_comprobante(self, request, pk=None):
+        """Endpoint para subir comprobante de pago"""
+        solicitud = self.get_object()
+        
+        # Verificar que el usuario sea el solicitante
+        if solicitud.solicitante != request.user:
+            return Response({
+                'error': 'No tienes permiso para subir comprobante a esta solicitud.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Verificar que la solicitud esté en estado adecuado
+        if solicitud.estado not in ['PENDIENTE', 'PAGADO']:
+            return Response({
+                'error': 'No se puede subir comprobante para solicitudes canceladas.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ComprobantePagoSerializer(solicitud, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'mensaje': 'Comprobante de pago subido exitosamente.',
+                'comprobante_url': solicitud.comprobante_pago.url if solicitud.comprobante_pago else None
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DisponibilidadArriendoAPIView(APIView):
     def get(self, request):
