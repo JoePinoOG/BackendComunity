@@ -19,6 +19,44 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(solicitante=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        """Sobrescribir update para manejar cambios de estado"""
+        instance = self.get_object()
+        
+        # Si se está intentando cambiar el estado
+        if 'estado' in request.data:
+            nuevo_estado = request.data['estado']
+            
+            # Validar permisos para cambiar estado
+            if nuevo_estado in ['APROBADO', 'CANCELADO']:
+                # Solo tesorero o presidente pueden aprobar/rechazar
+                if not hasattr(request.user, 'rol') or request.user.rol not in ['TESORERO', 'PRESIDENTE']:
+                    return Response({
+                        'error': 'No tienes permisos para cambiar el estado de solicitudes.'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Verificar que la solicitud esté pendiente
+                if instance.estado != 'PENDIENTE':
+                    return Response({
+                        'error': 'Solo se pueden modificar solicitudes pendientes.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validar transiciones de estado válidas
+            valid_transitions = {
+                'PENDIENTE': ['APROBADO', 'CANCELADO'],
+                'APROBADO': ['PAGADO', 'CANCELADO'],
+                'PAGADO': [],
+                'CANCELADO': []
+            }
+            
+            if nuevo_estado not in valid_transitions.get(instance.estado, []):
+                return Response({
+                    'error': f'No se puede cambiar de {instance.estado} a {nuevo_estado}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Continuar con la actualización normal
+        return super().update(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def iniciar_pago(self, request, pk=None):
         solicitud = self.get_object()
