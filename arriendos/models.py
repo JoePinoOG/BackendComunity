@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from django.core.validators import MinValueValidator
 
 class SolicitudArriendo(models.Model):
     ESTADOS = [
@@ -10,18 +9,21 @@ class SolicitudArriendo(models.Model):
         ('CANCELADO', 'Cancelado')
     ]
     
+    # Datos básicos del solicitante
     solicitante = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='solicitudes_arriendo'
     )
-    fecha_evento = models.DateField()  # Solo la fecha del evento
-    hora_inicio = models.TimeField(null=True, blank=True)   # Hora de inicio del arriendo
-    hora_fin = models.TimeField(null=True, blank=True)      # Hora de término del arriendo
+    
+    # Datos del evento
+    fecha_evento = models.DateField()
+    hora_inicio = models.TimeField()
+    hora_fin = models.TimeField()
     motivo = models.TextField()
-    cantidad_asistentes = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)]
-    )
+    cantidad_asistentes = models.PositiveIntegerField()
+    
+    # Estado y pago
     estado = models.CharField(
         max_length=20,
         choices=ESTADOS,
@@ -33,20 +35,21 @@ class SolicitudArriendo(models.Model):
         null=True,
         blank=True
     )
-    comprobante_pago = models.ImageField(
-        upload_to='comprobantes_arriendo/',
+    
+    # Comprobante como base64
+    comprobante_pago_base64 = models.TextField(
         null=True,
         blank=True,
-        help_text="Imagen del comprobante de pago del arriendo"
+        help_text="Imagen del comprobante en formato base64"
     )
     
+    # Fechas
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-fecha_solicitud']
         verbose_name_plural = "Solicitudes de arriendo"
-        unique_together = ('fecha_evento', 'hora_inicio', 'hora_fin')  # No se puede repetir el mismo bloque
 
     def __str__(self):
         return f"Solicitud #{self.id} - {self.solicitante.username}"

@@ -8,8 +8,4 @@ router.register(r'solicitudes', SolicitudArriendoViewSet, basename='solicitudarr
 urlpatterns = [
     path('disponibilidad/', DisponibilidadArriendoAPIView.as_view(), name='disponibilidad-arriendo'),
     path('', include(router.urls)),
-    path(
-        'solicitudes/<int:pk>/aprobar/',
-        SolicitudArriendoViewSet.as_view({'post': 'aprobar'})
-    ),
 ]

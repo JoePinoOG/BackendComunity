@@ -2,77 +2,50 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .models import SolicitudArriendo
 from .serializers import (
     SolicitudArriendoSerializer,
+    SolicitudArriendoCreateSerializer,
     ComprobantePagoSerializer,
     AprobacionArriendoSerializer
 )
 
 class SolicitudArriendoViewSet(viewsets.ModelViewSet):
     queryset = SolicitudArriendo.objects.all()
-    serializer_class = SolicitudArriendoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return SolicitudArriendoCreateSerializer
+        return SolicitudArriendoSerializer
 
     def perform_create(self, serializer):
         serializer.save(solicitante=self.request.user)
 
-    def update(self, request, *args, **kwargs):
-        """Sobrescribir update para manejar cambios de estado"""
-        instance = self.get_object()
-        
-        # Si se está intentando cambiar el estado
-        if 'estado' in request.data:
-            nuevo_estado = request.data['estado']
-            
-            # Solo validar si realmente se está cambiando el estado
-            if nuevo_estado != instance.estado:
-                # Validar permisos para cambiar estado
-                if nuevo_estado in ['APROBADO', 'CANCELADO']:
-                    # Solo tesorero o presidente pueden aprobar/rechazar
-                    if not hasattr(request.user, 'rol') or request.user.rol not in ['TESORERO', 'PRESIDENTE']:
-                        return Response({
-                            'error': 'No tienes permisos para cambiar el estado de solicitudes.'
-                        }, status=status.HTTP_403_FORBIDDEN)
-                    
-                    # Verificar que la solicitud esté pendiente
-                    if instance.estado != 'PENDIENTE':
-                        return Response({
-                            'error': 'Solo se pueden modificar solicitudes pendientes.'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Validar transiciones de estado válidas
-                valid_transitions = {
-                    'PENDIENTE': ['APROBADO', 'CANCELADO'],
-                    'APROBADO': ['PAGADO', 'CANCELADO'],
-                    'PAGADO': [],
-                    'CANCELADO': []
-                }
-                
-                if nuevo_estado not in valid_transitions.get(instance.estado, []):
-                    return Response({
-                        'error': f'No se puede cambiar de {instance.estado} a {nuevo_estado}.'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Continuar con la actualización normal
-        return super().update(request, *args, **kwargs)
+    def get_queryset(self):
+        # Si es admin, ver todas; si no, solo las propias
+        if hasattr(self.request.user, 'rol') and self.request.user.rol in ['TESORERO', 'PRESIDENTE']:
+            return SolicitudArriendo.objects.all()
+        return SolicitudArriendo.objects.filter(solicitante=self.request.user)
 
     @action(detail=True, methods=['post'], url_path='aprobar')
     def aprobar_solicitud(self, request, pk=None):
         """Endpoint para aprobar o rechazar solicitudes de arriendo"""
         solicitud = self.get_object()
         
-        # Verificar que la solicitud esté pendiente
-        if solicitud.estado != 'PENDIENTE':
-            return Response({
-                'error': 'Solo se pueden aprobar solicitudes pendientes.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
         # Verificar permisos (solo tesorero o presidente pueden aprobar)
         if not hasattr(request.user, 'rol') or request.user.rol not in ['TESORERO', 'PRESIDENTE']:
             return Response({
                 'error': 'No tienes permisos para aprobar solicitudes.'
             }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Verificar que la solicitud esté pendiente
+        if solicitud.estado != 'PENDIENTE':
+            return Response({
+                'error': 'Solo se pueden modificar solicitudes pendientes.'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         serializer = AprobacionArriendoSerializer(data=request.data)
         if serializer.is_valid():
@@ -86,11 +59,11 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
                     solicitud.monto_pago = monto_pago
                 if observaciones:
                     solicitud.observaciones = observaciones
-                mensaje = f"Solicitud de arriendo aprobada exitosamente."
+                mensaje = "Solicitud de arriendo aprobada exitosamente."
             else:  # RECHAZAR
                 solicitud.estado = 'CANCELADO'
                 solicitud.observaciones = observaciones
-                mensaje = f"Solicitud de arriendo rechazada."
+                mensaje = "Solicitud de arriendo rechazada."
             
             solicitud.save()
             
@@ -103,7 +76,7 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='subir-comprobante')
     def subir_comprobante(self, request, pk=None):
-        """Endpoint para subir comprobante de pago"""
+        """Endpoint para subir comprobante de pago en base64"""
         solicitud = self.get_object()
         
         # Verificar que el usuario sea el solicitante
@@ -113,9 +86,9 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_403_FORBIDDEN)
         
         # Verificar que la solicitud esté en estado adecuado
-        if solicitud.estado not in ['PENDIENTE', 'APROBADO', 'PAGADO']:
+        if solicitud.estado not in ['PENDIENTE', 'APROBADO']:
             return Response({
-                'error': 'No se puede subir comprobante para solicitudes canceladas.'
+                'error': 'Solo se puede subir comprobante para solicitudes pendientes o aprobadas.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         serializer = ComprobantePagoSerializer(solicitud, data=request.data, partial=True)
@@ -123,21 +96,54 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response({
                 'mensaje': 'Comprobante de pago subido exitosamente.',
-                'comprobante_url': solicitud.comprobante_pago.url if solicitud.comprobante_pago else None
+                'tiene_comprobante': bool(solicitud.comprobante_pago_base64)
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='marcar-pagado')
+    def marcar_pagado(self, request, pk=None):
+        """Endpoint para marcar como pagado (solo admins)"""
+        solicitud = self.get_object()
+        
+        # Verificar permisos
+        if not hasattr(request.user, 'rol') or request.user.rol not in ['TESORERO', 'PRESIDENTE']:
+            return Response({
+                'error': 'No tienes permisos para marcar como pagado.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if solicitud.estado != 'APROBADO':
+            return Response({
+                'error': 'Solo se pueden marcar como pagadas las solicitudes aprobadas.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        solicitud.estado = 'PAGADO'
+        solicitud.save()
+        
+        return Response({
+            'mensaje': 'Solicitud marcada como pagada.',
+            'solicitud': SolicitudArriendoSerializer(solicitud).data
+        })
+
 class DisponibilidadArriendoAPIView(APIView):
+    """Vista simple para verificar disponibilidad por fecha"""
+    
     def get(self, request):
         fecha = request.query_params.get('fecha')
         if not fecha:
             return Response({'error': 'Debe indicar una fecha'}, status=400)
+            
         reservas = SolicitudArriendo.objects.filter(
             fecha_evento=fecha,
-            estado__in=['PENDIENTE', 'APROBADO', 'PAGADO']
+            estado__in=['APROBADO', 'PAGADO']  # Solo las confirmadas
         )
+        
         horarios_ocupados = [
-            {'inicio': r.hora_inicio.strftime('%H:%M'), 'fin': r.hora_fin.strftime('%H:%M')}
+            {
+                'inicio': r.hora_inicio.strftime('%H:%M'), 
+                'fin': r.hora_fin.strftime('%H:%M'),
+                'motivo': r.motivo
+            }
             for r in reservas
         ]
+        
         return Response({'ocupados': horarios_ocupados})
