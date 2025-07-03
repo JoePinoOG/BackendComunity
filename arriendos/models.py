@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator
 class SolicitudArriendo(models.Model):
     ESTADOS = [
         ('PENDIENTE', 'Pendiente'),
+        ('APROBADO', 'Aprobado'),
         ('PAGADO', 'Pagado'),
         ('CANCELADO', 'Cancelado')
     ]

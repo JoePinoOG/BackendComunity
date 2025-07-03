@@ -19,7 +19,7 @@ class SolicitudArriendoSerializer(serializers.ModelSerializer):
         # Busca reservas que se solapen en la misma fecha y horario
         solapadas = SolicitudArriendo.objects.filter(
             fecha_evento=fecha,
-            estado__in=['PENDIENTE', 'PAGADO']
+            estado__in=['PENDIENTE', 'APROBADO', 'PAGADO']
         ).filter(
             hora_inicio__lt=hora_fin,
             hora_fin__gt=hora_inicio
@@ -49,3 +49,15 @@ class ComprobantePagoSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("El archivo no puede ser mayor a 5MB.")
                 
         return value
+
+
+class AprobacionArriendoSerializer(serializers.Serializer):
+    """Serializer para aprobar o rechazar solicitudes de arriendo"""
+    ACCIONES_CHOICES = [
+        ('APROBAR', 'Aprobar'),
+        ('RECHAZAR', 'Rechazar'),
+    ]
+    
+    accion = serializers.ChoiceField(choices=ACCIONES_CHOICES)
+    observaciones = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    monto_pago = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)

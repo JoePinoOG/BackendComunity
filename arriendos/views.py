@@ -6,7 +6,8 @@ from django.shortcuts import get_object_or_404
 from .models import SolicitudArriendo
 from .serializers import (
     SolicitudArriendoSerializer,
-    ComprobantePagoSerializer
+    ComprobantePagoSerializer,
+    AprobacionArriendoSerializer
 )
 from django.conf import settings
 from transbank.webpay.webpay_plus.transaction import Transaction
@@ -21,10 +22,10 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def iniciar_pago(self, request, pk=None):
         solicitud = self.get_object()
-        if solicitud.estado != 'PENDIENTE':
-            return Response({'error': 'La solicitud no está pendiente de pago.'}, status=status.HTTP_400_BAD_REQUEST)
+        if solicitud.estado not in ['PENDIENTE', 'APROBADO']:
+            return Response({'error': 'La solicitud debe estar pendiente o aprobada para proceder al pago.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        monto = 50000  # O el monto que corresponda según tu lógica
+        monto = solicitud.monto_pago or 50000  # Usar el monto asignado o valor por defecto
         buy_order = f"arriendo-{solicitud.id}"
         session_id = str(request.user.id)
         return_url = settings.WEBPAY_CONFIG['CALLBACK_URL']
@@ -44,6 +45,50 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
 
         return Response({'url': url, 'token': token})
 
+    @action(detail=True, methods=['post'], url_path='aprobar')
+    def aprobar_solicitud(self, request, pk=None):
+        """Endpoint para aprobar o rechazar solicitudes de arriendo"""
+        solicitud = self.get_object()
+        
+        # Verificar que la solicitud esté pendiente
+        if solicitud.estado != 'PENDIENTE':
+            return Response({
+                'error': 'Solo se pueden aprobar solicitudes pendientes.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar permisos (solo tesorero o presidente pueden aprobar)
+        if not hasattr(request.user, 'rol') or request.user.rol not in ['TESORERO', 'PRESIDENTE']:
+            return Response({
+                'error': 'No tienes permisos para aprobar solicitudes.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = AprobacionArriendoSerializer(data=request.data)
+        if serializer.is_valid():
+            accion = serializer.validated_data['accion']
+            observaciones = serializer.validated_data.get('observaciones', '')
+            monto_pago = serializer.validated_data.get('monto_pago')
+            
+            if accion == 'APROBAR':
+                solicitud.estado = 'APROBADO'
+                if monto_pago:
+                    solicitud.monto_pago = monto_pago
+                if observaciones:
+                    solicitud.observaciones = observaciones
+                mensaje = f"Solicitud de arriendo aprobada exitosamente."
+            else:  # RECHAZAR
+                solicitud.estado = 'CANCELADO'
+                solicitud.observaciones = observaciones
+                mensaje = f"Solicitud de arriendo rechazada."
+            
+            solicitud.save()
+            
+            return Response({
+                'mensaje': mensaje,
+                'solicitud': SolicitudArriendoSerializer(solicitud).data
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=['post'], url_path='subir-comprobante')
     def subir_comprobante(self, request, pk=None):
         """Endpoint para subir comprobante de pago"""
@@ -56,7 +101,7 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_403_FORBIDDEN)
         
         # Verificar que la solicitud esté en estado adecuado
-        if solicitud.estado not in ['PENDIENTE', 'PAGADO']:
+        if solicitud.estado not in ['PENDIENTE', 'APROBADO', 'PAGADO']:
             return Response({
                 'error': 'No se puede subir comprobante para solicitudes canceladas.'
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -77,7 +122,7 @@ class DisponibilidadArriendoAPIView(APIView):
             return Response({'error': 'Debe indicar una fecha'}, status=400)
         reservas = SolicitudArriendo.objects.filter(
             fecha_evento=fecha,
-            estado__in=['PENDIENTE', 'PAGADO']
+            estado__in=['PENDIENTE', 'APROBADO', 'PAGADO']
         )
         horarios_ocupados = [
             {'inicio': r.hora_inicio.strftime('%H:%M'), 'fin': r.hora_fin.strftime('%H:%M')}
