@@ -164,3 +164,13 @@ class DescargarCertificadoAPIView(generics.RetrieveAPIView):
     
     def get_queryset(self):
         return super().get_queryset().filter(usuario=self.request.user)
+
+class SolicitudCertificadoListAPIView(generics.ListAPIView):
+    """
+    Lista las solicitudes de certificado del usuario autenticado
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SolicitudCertificadoSerializer
+    
+    def get_queryset(self):
+        return SolicitudCertificado.objects.filter(usuario=self.request.user).order_by('-fecha_solicitud')
