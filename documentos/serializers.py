@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import CertificadoResidencia, SolicitudCertificado, TransaccionWebpay
 from django.conf import settings
 import os
+import json
 
 class CertificadoResidenciaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -55,20 +56,6 @@ class SolicitudCertificadoSerializer(serializers.ModelSerializer):
             return os.path.join(settings.MEDIA_URL, obj.documento.name)
         return None
 
-    def validate_datos(self, value):
-        """Valida que los datos incluyan todos los campos requeridos"""
-        config = CertificadoResidencia.objects.first()
-        if not config:
-            raise serializers.ValidationError("Configuración no disponible")
-        
-        campos_requeridos = config.campos_requeridos if isinstance(config.campos_requeridos, list) else json.loads(config.campos_requeridos)
-        
-        for campo in campos_requeridos:
-            if campo['requerido'] and campo['nombre'] not in value:
-                raise serializers.ValidationError(f"Falta el campo requerido: {campo['nombre']}")
-        
-        return value
-
 class TransaccionWebpaySerializer(serializers.ModelSerializer):
     class Meta:
         model = TransaccionWebpay
@@ -87,9 +74,9 @@ class IniciarPagoSerializer(serializers.Serializer):
 
 # Serializer para la solicitud inicial
 class SolicitudInicialSerializer(serializers.Serializer):
-    nombre_completo = serializers.CharField(max_length=200)
-    cedula_identidad = serializers.CharField(max_length=20)
-    domicilio_completo = serializers.CharField(max_length=300)
+    nombre_completo = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    cedula_identidad = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    domicilio_completo = serializers.CharField(max_length=300, required=False, allow_blank=True)
     institucion_destino = serializers.CharField(max_length=200, required=False, allow_blank=True)
     
     def create(self, validated_data):
@@ -99,7 +86,7 @@ class SolicitudInicialSerializer(serializers.Serializer):
         solicitud = SolicitudCertificado.objects.create(
             usuario=usuario,
             datos=validated_data,
-            monto=config.precio
+            monto=config.precio if config else 0
         )
         
         return solicitud

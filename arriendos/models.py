@@ -42,7 +42,6 @@ class SolicitudArriendo(models.Model):
     
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     observaciones = models.TextField(blank=True)
-    token_webpay = models.CharField(max_length=100, blank=True, null=True)  # Para asociar el pago Webpay
 
     class Meta:
         ordering = ['-fecha_solicitud']

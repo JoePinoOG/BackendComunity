@@ -36,145 +36,74 @@ class SolicitudCertificadoCreateAPIView(generics.CreateAPIView):
     serializer_class = SolicitudInicialSerializer
 
     def create(self, request, *args, **kwargs):
-        # Validar datos con el serializer
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
+        # Crear solicitud sin validaciones estrictas
         config = CertificadoResidencia.objects.first()
-        if not config:
-            return Response(
-                {'error': 'Configuración no disponible'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
         
-        # Crear solicitud
+        # Crear solicitud directamente
         solicitud = SolicitudCertificado.objects.create(
             usuario=request.user,
-            datos=serializer.validated_data,
-            monto=config.precio,
-            estado_pago='PENDIENTE',
+            datos=request.data,  # Usar datos directamente sin validación
+            monto=config.precio if config else 0,
+            estado_pago='APROBADO',  # Marcar como aprobado directamente
             estado_documento='PENDIENTE'
         )
         
-        # Iniciar pago Webpay
+        # Generar certificado inmediatamente
         try:
-            webpay_config = settings.WEBPAY_CONFIG
-            payload = {
-                'buy_order': str(solicitud.id),
-                'session_id': str(request.user.id),
-                'amount': float(solicitud.monto),
-                'return_url': webpay_config['CALLBACK_URL']
-            }
-            
-            headers = {
-                'Tbk-Api-Key-Id': webpay_config['COMMERCE_CODE'],
-                'Tbk-Api-Key-Secret': webpay_config['API_KEY'],
-                'Content-Type': 'application/json'
-            }
-            
-            base_url = 'https://webpay3gint.transbank.cl' if webpay_config['ENVIRONMENT'] == 'TEST' else 'https://webpay3g.transbank.cl'
-            url = f"{base_url}/rswebpaytransaction/api/webpay/v1.2/transactions"
-            
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Guardar transacción
-            TransaccionWebpay.objects.create(
-                solicitud=solicitud,
-                token=data['token'],
-                estado='INICIADA',
-                respuesta=data
-            )
-            
-            # Preparar respuesta
-            pago_serializer = WebpayResponseSerializer(data={
-                'url_redirect': f"{base_url}/webpay/v1.2/transactions/{data['token']}",
-                'token': data['token']
-            })
-            pago_serializer.is_valid(raise_exception=True)
+            self.generar_certificado(solicitud)
+            solicitud.estado_documento = 'GENERADO'
+            solicitud.fecha_generacion = datetime.now()
+            solicitud.save()
             
             return Response({
-                'solicitud': SolicitudCertificadoSerializer(solicitud).data,
-                'pago': pago_serializer.data
+                'message': 'Certificado generado exitosamente',
+                'solicitud': SolicitudCertificadoSerializer(solicitud).data
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            solicitud.estado_pago = 'RECHAZADO'
+            solicitud.estado_documento = 'ERROR'
             solicitud.save()
             return Response(
-                {'error': str(e)}, 
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-
-class WebpayCallbackAPIView(APIView):
-    permission_classes = [AllowAny]
-    """
-    Maneja el callback de Webpay después del pago
-    """
-    def get(self, request, *args, **kwargs):
-        token = request.query_params.get('token_ws')
-        if not token:
-            return Response(
-                {'error': 'Token no proporcionado'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            # Verificar estado con Webpay
-            transaccion = TransaccionWebpay.objects.get(token=token)
-            webpay_config = settings.WEBPAY_CONFIG
-            
-            headers = {
-                'Tbk-Api-Key-Id': webpay_config['COMMERCE_CODE'],
-                'Tbk-Api-Key-Secret': webpay_config['API_KEY'],
-                'Content-Type': 'application/json'
-            }
-            
-            base_url = 'https://webpay3gint.transbank.cl' if webpay_config['ENVIRONMENT'] == 'TEST' else 'https://webpay3g.transbank.cl'
-            url = f"{base_url}/rswebpaytransaction/api/webpay/v1.2/transactions/{token}"
-            
-            response = requests.put(url, headers=headers)
-            data = response.json()
-            
-            # Actualizar transacción
-            transaccion.respuesta = data
-            transaccion.estado = 'APROBADA' if data['response_code'] == 0 else 'RECHAZADA'
-            transaccion.save()
-            
-            # Actualizar solicitud
-            solicitud = transaccion.solicitud
-            solicitud.codigo_transaccion = data['buy_order']
-            solicitud.respuesta_webpay = data
-            solicitud.estado_pago = 'APROBADO' if data['response_code'] == 0 else 'RECHAZADO'
-            solicitud.fecha_pago = datetime.now()
-            
-            if data['response_code'] == 0:
-                self.generar_certificado(solicitud)
-                solicitud.estado_documento = 'GENERADO'
-                solicitud.fecha_generacion = datetime.now()
-            
-            solicitud.save()
-            
-            return Response(SolicitudCertificadoSerializer(solicitud).data)
-            
-        except Exception as e:
-            return Response(
-                {'error': str(e)}, 
+                {'error': f'Error al generar certificado: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     def generar_certificado(self, solicitud):
+        """Genera el certificado PDF sin validaciones"""
         config = CertificadoResidencia.objects.first()
-        if not config:
-            raise Exception("Configuración no encontrada")
         
         try:
+            # Si no hay plantilla, crear certificado básico
+            if not config or not config.plantilla:
+                # Crear certificado básico sin plantilla
+                filename_pdf = f"certificado_residencia_{solicitud.id}.pdf"
+                temp_dir = tempfile.gettempdir()
+                temp_path_pdf = os.path.join(temp_dir, filename_pdf)
+                
+                # Crear un PDF básico (puedes usar reportlab o similar)
+                # Por simplicidad, creamos un archivo texto temporal
+                with open(temp_path_pdf, 'w') as f:
+                    f.write(f"Certificado de Residencia #{solicitud.id}\n")
+                    f.write(f"Usuario: {solicitud.usuario.get_full_name()}\n")
+                    f.write(f"Fecha: {datetime.now().strftime('%d/%m/%Y')}\n")
+                
+                # Simular guardado (reemplaza con tu lógica de PDF)
+                with open(temp_path_pdf, 'rb') as f:
+                    solicitud.documento_pdf.save(filename_pdf, f)
+                return
+
+            # Si hay plantilla, usar DocxTemplate
             doc = DocxTemplate(config.plantilla.path)
             usuario = solicitud.usuario
 
+            # Usar datos básicos del usuario, sin validar campos requeridos
+            datos_solicitud = solicitud.datos if isinstance(solicitud.datos, dict) else {}
+            
             contexto = {
-                **solicitud.datos,
+                'nombre_completo': datos_solicitud.get('nombre_completo', usuario.get_full_name()),
+                'cedula_identidad': datos_solicitud.get('cedula_identidad', ''),
+                'domicilio_completo': datos_solicitud.get('domicilio_completo', ''),
+                'institucion_destino': datos_solicitud.get('institucion_destino', ''),
                 'nombre_usuario': usuario.get_full_name(),
                 'email_usuario': usuario.email,
                 'fecha_emision': datetime.now().strftime("%d de %B de %Y"),
@@ -194,13 +123,12 @@ class WebpayCallbackAPIView(APIView):
             temp_path_pdf = os.path.join(temp_dir, filename_pdf)
             convert(temp_path_docx, temp_path_pdf)
 
-            # Guardar el PDF en el modelo (debes agregar un campo FileField para PDF en tu modelo)
+            # Guardar el PDF en el modelo
             with open(temp_path_pdf, 'rb') as f:
                 solicitud.documento_pdf.save(filename_pdf, f)
 
         except Exception as e:
-            solicitud.estado_documento = 'ERROR'
-            solicitud.save()
+            print(f"Error al generar certificado: {str(e)}")
             raise e
 
 class DescargarCertificadoAPIView(generics.RetrieveAPIView):
@@ -215,7 +143,8 @@ class DescargarCertificadoAPIView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         
-        if not instance.documento:
+        # Verificar si hay documento PDF generado
+        if not instance.documento_pdf:
             return Response(
                 {'error': 'Documento no generado aún'},
                 status=status.HTTP_404_NOT_FOUND
@@ -226,9 +155,10 @@ class DescargarCertificadoAPIView(generics.RetrieveAPIView):
         instance.fecha_entrega = datetime.now()
         instance.save()
         
-        # Devolver el archivo
-        document = instance.documento.open('rb')
-        response = FileResponse(document)
+        # Devolver el archivo PDF
+        from django.http import FileResponse
+        document = instance.documento_pdf.open('rb')
+        response = FileResponse(document, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="certificado_residencia_{instance.id}.pdf"'
         return response
     

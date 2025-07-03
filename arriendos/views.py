@@ -9,8 +9,6 @@ from .serializers import (
     ComprobantePagoSerializer,
     AprobacionArriendoSerializer
 )
-from django.conf import settings
-from transbank.webpay.webpay_plus.transaction import Transaction
 
 class SolicitudArriendoViewSet(viewsets.ModelViewSet):
     queryset = SolicitudArriendo.objects.all()
@@ -58,32 +56,6 @@ class SolicitudArriendoViewSet(viewsets.ModelViewSet):
         
         # Continuar con la actualización normal
         return super().update(request, *args, **kwargs)
-
-    @action(detail=True, methods=['post'])
-    def iniciar_pago(self, request, pk=None):
-        solicitud = self.get_object()
-        if solicitud.estado not in ['PENDIENTE', 'APROBADO']:
-            return Response({'error': 'La solicitud debe estar pendiente o aprobada para proceder al pago.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        monto = solicitud.monto_pago or 50000  # Usar el monto asignado o valor por defecto
-        buy_order = f"arriendo-{solicitud.id}"
-        session_id = str(request.user.id)
-        return_url = settings.WEBPAY_CONFIG['CALLBACK_URL']
-
-        response = Transaction.create(
-            buy_order=buy_order,
-            session_id=session_id,
-            amount=monto,
-            return_url=return_url
-        )
-        token = response['token']
-        url = response['url']
-
-        solicitud.token_webpay = token
-        solicitud.monto_pago = monto
-        solicitud.save()
-
-        return Response({'url': url, 'token': token})
 
     @action(detail=True, methods=['post'], url_path='aprobar')
     def aprobar_solicitud(self, request, pk=None):
@@ -169,20 +141,3 @@ class DisponibilidadArriendoAPIView(APIView):
             for r in reservas
         ]
         return Response({'ocupados': horarios_ocupados})
-
-class WebpayArriendoCallbackAPIView(APIView):
-    permission_classes = []  # Permitir acceso sin autenticación
-
-    def post(self, request):
-        token_ws = request.data.get('token_ws') or request.query_params.get('token_ws')
-        if not token_ws:
-            return Response({'error': 'Token no proporcionado'}, status=400)
-        
-        solicitud = get_object_or_404(SolicitudArriendo, token_webpay=token_ws)
-        
-        if solicitud.estado == 'PAGADO':
-            return Response({'error': 'Esta reserva ya fue pagada y está bloqueada.'}, status=400)
-        
-        solicitud.estado = 'PAGADO'
-        solicitud.save()
-        return Response({'status': 'Pago confirmado y reserva realizada'})

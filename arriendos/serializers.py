@@ -7,9 +7,9 @@ class SolicitudArriendoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'solicitante', 'fecha_evento', 'hora_inicio', 'hora_fin',
             'motivo', 'cantidad_asistentes', 'estado', 'monto_pago', 'comprobante_pago',
-            'fecha_solicitud', 'observaciones', 'token_webpay'
+            'fecha_solicitud', 'observaciones'
         ]
-        read_only_fields = ['id', 'fecha_solicitud', 'solicitante', 'token_webpay']
+        read_only_fields = ['id', 'fecha_solicitud', 'solicitante']
 
     def validate(self, data):
         fecha = data['fecha_evento']
